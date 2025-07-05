@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { fetchPostDetail, fetchComments, createComment, updateComment, deleteComment, likePost, unlikePost, checkPostLiked, deletePost, incrementPostViewCount } from '../services/api/communityApi';
+import { fetchPostDetail, fetchComments, createComment, updateComment, deleteComment, likePost, unlikePost, checkPostLiked, deletePost, incrementPostViewCount, fetchPostViewCount } from '../services/api/communityApi';
 import type { PostDTO, CommentDTO } from '../types/community';
 import { Card, CardContent, CardFooter } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -13,7 +13,7 @@ import Header from '../components/common/Header';
 const COMMENT_PAGE_SIZE = 10;
 
 // 커스텀 훅: 게시글 상세 관리
-const usePostDetail = (postId: number | undefined) => {
+const usePostDetail = (postId: number | undefined, userId: number | undefined) => {
   const [post, setPost] = useState<PostDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +22,33 @@ const usePostDetail = (postId: number | undefined) => {
   const [commentCount, setCommentCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
+
+  // 서버에서 조회수 증가 및 최신 조회수 가져오기
+  const incrementViewCount = async (postId: number) => {
+    try {
+      // 서버에 조회수 증가 요청
+      await incrementPostViewCount(postId);
+      
+      // 서버에서 최신 조회수 가져오기
+      const updatedViewCount = await fetchPostViewCount(postId);
+      setViewCount(updatedViewCount);
+      
+      console.log(`조회수 증가: 게시글 ${postId}, 서버 조회수: ${updatedViewCount}`);
+    } catch (error) {
+      console.error('조회수 증가 실패:', error);
+    }
+  };
+
+  // 서버에서 최신 조회수 가져오기
+  const refreshViewCount = async (postId: number) => {
+    try {
+      const updatedViewCount = await fetchPostViewCount(postId);
+      setViewCount(updatedViewCount);
+      console.log(`조회수 새로고침: 게시글 ${postId}, 서버 조회수: ${updatedViewCount}`);
+    } catch (error) {
+      console.error('조회수 새로고침 실패:', error);
+    }
+  };
 
   const loadPostDetail = async () => {
     if (!postId) return;
@@ -33,13 +60,13 @@ const usePostDetail = (postId: number | undefined) => {
       const postData = await fetchPostDetail(postId);
       setPost(postData);
       
-      // 조회수 증가
-      await incrementPostViewCount(postId);
-      
-      // 카운터 정보 설정
+      // 초기 카운터 정보 설정
       setLikeCount(postData.likeCount);
       setCommentCount(postData.commentCount);
       setViewCount(postData.viewCount);
+      
+      // 조회수 증가 처리
+      await incrementViewCount(postId);
     } catch (error) {
       setError('게시글을 불러오지 못했습니다.');
     } finally {
@@ -48,25 +75,20 @@ const usePostDetail = (postId: number | undefined) => {
   };
 
   const handleLike = async () => {
-    if (!postId) return;
+    if (!postId || !userId) return;
     setLikeLoading(true);
     
     try {
       if (liked) {
-        await unlikePost(postId, postId);
+        await unlikePost(userId, postId);
+        setLikeCount(prev => Math.max(0, prev - 1));
       } else {
-        await likePost(postId, postId);
+        await likePost(userId, postId);
+        setLikeCount(prev => prev + 1);
       }
-
-      // 게시글 상세 정보를 다시 조회하여 카운터 정보 업데이트
-      const updatedPost = await fetchPostDetail(postId);
-      setPost(updatedPost);
-      setLikeCount(updatedPost.likeCount);
-      setViewCount(updatedPost.viewCount);
       
-      // 좋아요 상태 확인
-      const newLiked = await checkPostLiked(postId, postId);
-      setLiked(newLiked);
+      // 좋아요 상태 토글
+      setLiked(!liked);
     } catch (err) {
       console.error('좋아요 처리 중 오류:', err);
     } finally {
@@ -87,12 +109,14 @@ const usePostDetail = (postId: number | undefined) => {
     handleLike,
     setLiked,
     setCommentCount,
-    setViewCount
+    setViewCount,
+    incrementViewCount,
+    refreshViewCount
   };
 };
 
 // 커스텀 훅: 댓글 관리
-const useComments = (postId: number | undefined) => {
+const useComments = (postId: number | undefined, userId: number | undefined, setCommentCount: (value: number | ((prev: number) => number)) => void) => {
   const [comments, setComments] = useState<CommentDTO[]>([]);
   const [commentPage, setCommentPage] = useState(0);
   const [commentTotalPages, setCommentTotalPages] = useState(1);
@@ -126,16 +150,19 @@ const useComments = (postId: number | undefined) => {
 
   const handleCommentSubmit = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    if (!commentContent.trim() || !postId) return;
+    if (!commentContent.trim() || !postId || !userId) return;
     
     setCommentLoading(true);
     try {
-      await createComment({ postId, userId: postId, content: commentContent });
+      await createComment({ postId, userId, content: commentContent });
       setCommentContent('');
       setCommentPage(0);
       
       // 댓글 목록 업데이트
       await loadComments();
+      
+      // 댓글 개수 증가
+      setCommentCount(prev => prev + 1);
     } catch {
       // 에러 처리
     } finally {
@@ -149,6 +176,9 @@ const useComments = (postId: number | undefined) => {
     try {
       await deleteComment(commentId);
       await loadComments();
+      
+      // 댓글 개수 감소
+      setCommentCount(prev => Math.max(0, prev - 1));
     } catch {
       // 에러 처리
     }
@@ -163,6 +193,7 @@ const useComments = (postId: number | undefined) => {
       setEditingCommentId(null);
       setEditingContent('');
       await loadComments();
+      // 댓글 수정은 개수에 영향 없음
     } catch {
       // 에러 처리
     }
@@ -215,8 +246,18 @@ const CommunityDetailPage: React.FC = () => {
     handleLike,
     setLiked,
     setCommentCount,
-    setViewCount
-  } = usePostDetail(Number(id));
+    setViewCount,
+    incrementViewCount,
+    refreshViewCount
+  } = usePostDetail(Number(id), userId);
+
+  // 개발자 도구에서 조회수 새로고침 함수 등록 (디버깅용)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).refreshViewCount = () => refreshViewCount(Number(id));
+      console.log('조회수 새로고침 함수가 window.refreshViewCount에 등록되었습니다.');
+    }
+  }, [refreshViewCount, id]);
 
   const {
     comments,
@@ -235,7 +276,7 @@ const CommunityDetailPage: React.FC = () => {
     handleCommentSubmit,
     handleDeleteComment,
     handleEditSubmit
-  } = useComments(Number(id));
+  } = useComments(Number(id), userId, setCommentCount);
 
   // 스크롤 맨 위로
   useEffect(() => {

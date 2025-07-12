@@ -190,18 +190,19 @@ const setGlobalChatbotState = (userId: number, state: Partial<GlobalChatbotState
 // 전역 챗봇 오픈 함수 (사용자별 상태 관리)
 const openChatbot: OpenChatbotFunction = (type: 'video' | 'consult', payload?: any) => {
   console.log('ChatModal: openChatbot called with type:', type);
-  
-  // 현재 사용자 ID 가져오기 (window에서)
-  const currentUserId = (window as any).currentUserId;
-  
+  // Get userId from useUserStore
+  const userId = (window as any).globalUserId;
+  if (!userId) {
+    alert('로그인이 필요합니다.');
+    return;
+  }
   if (type === 'video') {
     const videoPayload = {
       videoUrl: CHATBOT_CONFIG.VIDEO_URL,
       thumbnail: CHATBOT_CONFIG.THUMBNAIL_URL,
       message: CHATBOT_CONFIG.VIDEO_MESSAGE
     };
-    console.log('ChatModal: Setting video payload:', videoPayload);
-    setGlobalChatbotState(currentUserId, {
+    setGlobalChatbotState(userId, {
       isOpen: true,
       initType: 'video',
       initPayload: videoPayload
@@ -210,23 +211,16 @@ const openChatbot: OpenChatbotFunction = (type: 'video' | 'consult', payload?: a
     const consultPayload = {
       message: CHATBOT_CONFIG.CONSULT_MESSAGE
     };
-    console.log('ChatModal: Setting consult payload:', consultPayload);
-    setGlobalChatbotState(currentUserId, {
+    setGlobalChatbotState(userId, {
       isOpen: true,
       initType: 'consult',
       initPayload: consultPayload
     });
   }
-  
-  const currentState = getGlobalChatbotState(currentUserId);
-  console.log('ChatModal: Dispatching event with payload:', currentState.initPayload);
-  
-  // 전역 상태 변경을 알리는 이벤트 발생
+  const currentState = getGlobalChatbotState(userId);
   window.dispatchEvent(new CustomEvent('chatbotStateChanged', { 
-    detail: { type, payload: currentState.initPayload, userId: currentUserId } 
+    detail: { type, payload: currentState.initPayload, userId } 
   }));
-  
-  // 전역 상태를 window 객체에 업데이트
   if (typeof window !== 'undefined') {
     (window as any).globalChatbotStates = globalChatbotStates;
   }
@@ -256,15 +250,21 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
       setMessages([]);
       // 로그아웃 시 전역 상태 완전 초기화
       if (typeof window !== 'undefined') {
-        (window as any).currentUserId = null;
         clearAllGlobalStates(); // 유틸리티 함수 사용
         (window as any).openChatbot = openChatbot;
       }
     } else {
       // 새로운 사용자 로그인 시 현재 사용자 ID 설정
       if (typeof window !== 'undefined') {
-        (window as any).currentUserId = userId;
+        (window as any).globalUserId = userId; // 전역 변수에 설정
       }
+    }
+  }, [userId]);
+
+  // Add this useEffect to sync window.globalUserId with userId
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).globalUserId = userId;
     }
   }, [userId]);
 

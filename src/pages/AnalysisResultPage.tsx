@@ -8,6 +8,7 @@ import { useUserStore } from '@/store/userStore';
 import type { AnalysisHistoryItem } from '@/types/index';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { fetchAnalysisDetail as fetchAnalysisDetailApi } from '../services/api/analysisApi';
 
 interface LocationState {
   frontPhoto: File;
@@ -36,91 +37,40 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
   const location = useLocation();
   const { historyId } = useParams<{ historyId: string }>();
   const { user } = useUserStore();
-  const analysisFromState = (location.state as any)?.analysis as AnalysisHistoryItem | undefined;
-  const [analysis, setAnalysis] = useState<AnalysisHistoryItem | null>(analysisFromState || null);
+  const [analysis, setAnalysis] = useState<AnalysisHistoryItem | null>(null);
   const [status, setStatus] = useState<'loading' | 'completed' | 'result' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 사진 데이터 확인
+  // 사진 데이터 확인 (필요시 활용)
   const { frontPhoto, sidePhoto } = (location.state as LocationState) || {};
 
   useEffect(() => {
-    console.log('[AnalysisResultPage] useUserStore user changed:', user);
-    if (analysisFromState) {
-      setStatus('loading');
-      setTimeout(() => {
-        setStatus('completed');
-        setTimeout(() => {
-          setAnalysis(analysisFromState);
-          setStatus('result');
-        }, 2000);
-      }, 2000);
+    if (!historyId) {
+      setErrorMessage('분석 결과 ID가 없습니다.');
+      setStatus('error');
       return;
     }
-    // 사진 데이터가 있으면 분석 시작, 없으면 historyId로 기존 결과 조회
-    if (frontPhoto && user) {
-      handleStartAnalysis();
-    } else if (historyId) {
-      fetchAnalysisDetail();
-    } else {
-      setErrorMessage('분석할 사진이 없습니다.');
-      setStatus('error');
-    }
-  }, [frontPhoto, sidePhoto, user, historyId, analysisFromState]);
-
-  const handleStartAnalysis = async () => {
-    if (!frontPhoto || !user) return;
-
     setStatus('loading');
-    
-    try {
-      // AI 분석 시뮬레이션 (3초 대기)
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // 분석 완료 상태로 변경
-      setStatus('completed');
-      
-      // 2초 후 결과 표시
-      setTimeout(() => {
-        // 분석 완료 후 결과 데이터 설정
-        const mockAnalysisData: AnalysisHistoryItem = {
-          id: Date.now(),
-          createdAt: new Date().toISOString(),
-          spineCurvScore: 75,
-          spineScolScore: 82,
-          pelvicScore: 78,
-          neckScore: 65,
-          shoulderScore: 70
-        };
-        
-        setAnalysis(mockAnalysisData);
-        setStatus('result');
-      }, 2000);
-
-    } catch (error) {
-      console.error('분석 중 오류 발생:', error);
-      setErrorMessage('분석 중 오류가 발생했습니다. 다시 시도해주세요.');
-      setStatus('error');
-    }
-  };
-
-  const fetchAnalysisDetail = async () => {
-    if (!historyId) return;
-
-    setStatus('loading');
-    try {
-      const res = await fetch(`http://localhost:8081/api/analysis-histories/${historyId}`);
-      if (!res.ok) throw new Error('분석 기록을 불러오는데 실패했습니다.');
-      const data: AnalysisHistoryItem = await res.json();
-      setAnalysis(data);
-      setStatus('result');
-    } catch (error) {
-      console.error(error);
-      setErrorMessage('데이터를 불러오는 중 오류가 발생했습니다.');
-      setStatus('error');
-    }
-  };
+    const start = Date.now();
+    fetchAnalysisDetailApi(Number(historyId))
+      .then((data) => {
+        setAnalysis(data);
+        const elapsed = Date.now() - start;
+        const minLoading = 1000; // 최소 1초 로딩
+        setTimeout(() => {
+          setStatus('completed');
+          setTimeout(() => {
+            setStatus('result');
+          }, 2000); // 2초 동안 '분석 완료!' 보여주기
+        }, Math.max(0, minLoading - elapsed));
+      })
+      .catch((error) => {
+        console.error(error);
+        setErrorMessage('분석 결과를 불러오는 중 오류가 발생했습니다.');
+        setStatus('error');
+      });
+  }, [historyId, frontPhoto, sidePhoto, user]);
 
   // 챗봇 오픈 트리거 - ChatModal에서 관리하는 전역 함수 사용
   const openChatbot = (type: 'video' | 'consult', payload?: any) => {

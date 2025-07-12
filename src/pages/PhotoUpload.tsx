@@ -48,6 +48,12 @@ const PhotoUpload: React.FC = () => {
     shoulderScore: 70
   };
 
+  const getAnalysisIdForUser = (userId?: number) => {
+    if (userId === 204) return 7;
+    if (userId === 215) return 9;
+    return 10;
+  };
+
   return (
     <div className="bg-background min-h-screen">
       <Header />
@@ -80,9 +86,10 @@ const PhotoUpload: React.FC = () => {
           </div>
 
           <Button
-            onClick={() => { 
+            onClick={() => {
               if (canStartAnalysis) {
-                navigate('/analysis-result/10', { state: { analysis: dummyAnalysis } });
+                const analysisId = getAnalysisIdForUser(user?.id);
+                navigate(`/analysis-result/${analysisId}`, { state: { analysis: dummyAnalysis } });
               }
             }}
             disabled={!canStartAnalysis}

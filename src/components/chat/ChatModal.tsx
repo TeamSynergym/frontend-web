@@ -5,6 +5,7 @@ import {
   getActiveSession,
   getChatHistory,
   sendChatMessage,
+  requestCommentSummary,
   type ChatMessageDTO,
   type ChatRequestDTO,
   type ChatResponseDTO
@@ -41,35 +42,7 @@ function getYoutubeId(url: string) {
   return match ? match[1] : '';
 }
 
-function convertBackendMessageToFrontend(msg: ChatMessageDTO): ChatMessage {
-  if (msg.type === 'bot' && msg.videoUrl) {
-    const videoId = getYoutubeId(msg.videoUrl);
-    return {
-      type: 'bot',
-      content: (
-        <div>
-          <iframe
-            width="320"
-            height="180"
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title="YouTube video player"
-            style={{ border: 'none' }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="rounded mb-2"
-          ></iframe>
-          <div>{msg.content}</div>
-        </div>
-      ),
-      timestamp: msg.timestamp
-    };
-  }
-  return {
-    type: msg.type as "user" | "bot",
-    content: msg.content,
-    timestamp: msg.timestamp
-  };
-}
+// convertBackendMessageToFrontend 함수는 컴포넌트 내부로 이동
 
 function createInitialMessage(type: 'video' | 'consult', payload: any, response: string): ChatMessage | null {
   if (type === "video") {
@@ -105,6 +78,43 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
   const { user } = useUserStore();
   const [isMinimized, setIsMinimized] = useState(true);
   const [initialRequestSent, setInitialRequestSent] = useState(false);
+
+  // convertBackendMessageToFrontend 함수를 컴포넌트 내부로 이동
+  const convertBackendMessageToFrontend = (msg: ChatMessageDTO): ChatMessage => {
+    if (msg.type === 'bot' && msg.videoUrl) {
+      const videoId = getYoutubeId(msg.videoUrl);
+      return {
+        type: 'bot',
+        content: (
+          <div>
+            <iframe
+              width="320"
+              height="180"
+              src={`https://www.youtube.com/embed/${videoId}`}
+              title="YouTube video player"
+              style={{ border: 'none' }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="rounded mb-2"
+            ></iframe>
+            <div>{msg.content}</div>
+            <button
+              onClick={() => handleCommentSummary(msg.videoUrl!)}
+              className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+            >
+              📊 댓글 요약 보기
+            </button>
+          </div>
+        ),
+        timestamp: msg.timestamp
+      };
+    }
+    return {
+      type: msg.type as "user" | "bot",
+      content: msg.content,
+      timestamp: msg.timestamp
+    };
+  };
 
   // userId가 바뀌면 상태 초기화
   useEffect(() => {
@@ -185,27 +195,57 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
       };
       sendChatMessage(payload).then(aiRes => {
         const userMsg: ChatMessage = { type: 'user', content: message };
-        let botMsg: ChatMessage = { type: 'bot', content: aiRes.response };
-        if (aiRes.videoUrl) {
-          botMsg = {
-            type: 'bot',
-            content: (
-              <div>
-                <iframe
-                  width="320"
-                  height="180"
-                  src={aiRes.videoUrl.replace('watch?v=', 'embed/')}
-                  title={aiRes.videoTitle || "추천 영상"}
-                  style={{ border: "none" }}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="rounded mb-2"
-                ></iframe>
-                <div>{aiRes.videoTitle || aiRes.response}</div>
-              </div>
-            )
-          };
-        }
+        
+        // AI 응답을 프론트엔드 메시지 형식으로 변환
+        const convertBackendMessageToFrontend = (aiRes: any) => {
+          console.log("[DEBUG] Full AI response:", aiRes);
+          console.log("[DEBUG] aiRes.videoUrl:", aiRes.videoUrl);
+          console.log("[DEBUG] aiRes.video_url:", (aiRes as any).video_url);
+          console.log("[DEBUG] Has videoUrl:", !!aiRes.videoUrl);
+          console.log("[DEBUG] Has video_url:", !!(aiRes as any).video_url);
+          
+          let botMessage: ChatMessage;
+          
+          if (aiRes.videoUrl || (aiRes as any).video_url) {
+            const videoUrl = aiRes.videoUrl || (aiRes as any).video_url;
+            console.log("[DEBUG] Video response received:", aiRes);
+            console.log("[DEBUG] videoUrl:", videoUrl, "typeof:", typeof videoUrl);
+            const videoId = getYoutubeId(videoUrl);
+            console.log("[DEBUG] getYoutubeId input:", videoUrl, "videoId:", videoId);
+            const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
+            console.log("[DEBUG] iframe src:", iframeSrc);
+            botMessage = {
+              type: "bot",
+              content: (
+                <div>
+                  <iframe
+                    width="320"
+                    height="180"
+                    src={iframeSrc}
+                    title={aiRes.videoTitle || (aiRes as any).video_title || "추천 영상"}
+                    style={{ border: "none" }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="rounded mb-2"
+                  ></iframe>
+                  <div>{aiRes.response}</div>
+                  <button
+                    onClick={() => handleCommentSummary(videoUrl)}
+                    className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                  >
+                    📊 댓글 요약 보기
+                  </button>
+                </div>
+              )
+            };
+          } else {
+            botMessage = { type: "bot", content: aiRes.response };
+          }
+          
+          return botMessage;
+        };
+
+        const botMsg = convertBackendMessageToFrontend(aiRes);
         setMessages([userMsg, botMsg]);
       });
     }
@@ -221,41 +261,119 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
     // 더 이상 사용하지 않음
   }, []);
 
+  // 댓글 요약 핸들러
+  const handleCommentSummary = async (videoUrl: string) => {
+    if (!userId || !historyId) return;
+    
+    const userMessage: ChatMessage = { type: "user", content: `댓글 요약해주세요: ${videoUrl}` };
+    setMessages(prev => [...prev, userMessage]);
+    
+    const payload: ChatRequestDTO = {
+      type: 'comment_summary',
+      userId,
+      historyId,
+      message: `댓글 요약해주세요: ${videoUrl}`,
+    };
+    
+    try {
+      const aiRes = await requestCommentSummary(payload);
+      
+      if (aiRes.type === 'error') {
+        setMessages(prev => [
+          ...prev,
+          { type: "bot", content: aiRes.response }
+        ]);
+        return;
+      }
+      
+      const botMessage: ChatMessage = { type: "bot", content: aiRes.response };
+      setMessages(prev => [...prev, botMessage]);
+    } catch (e) {
+      setMessages(prev => [
+        ...prev,
+        { type: "bot", content: "댓글 요약 중 오류가 발생했습니다. 다시 시도해 주세요." }
+      ]);
+    }
+  };
+
   // 메시지 전송 핸들러
   const handleSend = async () => {
     if (!input.trim() || !userId || !historyId) return;
-    setMessages(prev => [...prev, { type: "user", content: input }]);
+    
+    const userMessage: ChatMessage = { type: "user", content: input };
+    setMessages(prev => [...prev, userMessage]);
     setInput("");
+    
     const payload: ChatRequestDTO = {
       type: initType === 'video' ? 'recommend_video' : 'ai_coach',
       userId,
       historyId,
       message: input,
     };
+    
     try {
       const aiRes = await sendChatMessage(payload);
-      setMessages(prev => [
-        ...prev,
-        { type: "bot", content: aiRes.response },
-        ...(aiRes.videoUrl ? [{
-          type: "bot" as const,
-          content: (
-            <div>
-              <iframe
-                width="320"
-                height="180"
-                src={aiRes.videoUrl.replace('watch?v=', 'embed/')}
-                title={aiRes.videoTitle || "추천 영상"}
-                style={{ border: "none" }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="rounded mb-2"
-              ></iframe>
-              <div>{aiRes.videoTitle}</div>
-            </div>
-          )
-        }] : []) as ChatMessage[]
-      ]);
+      
+      if (aiRes.type === 'error') {
+        setMessages(prev => [
+          ...prev,
+          { type: "bot", content: aiRes.response }
+        ]);
+        return;
+      }
+      
+      // AI 응답을 프론트엔드 메시지 형식으로 변환
+      const convertBackendMessageToFrontend = (aiRes: any) => {
+        console.log("[DEBUG] Full AI response:", aiRes);
+        console.log("[DEBUG] aiRes.videoUrl:", aiRes.videoUrl);
+        console.log("[DEBUG] aiRes.video_url:", (aiRes as any).video_url);
+        console.log("[DEBUG] Has videoUrl:", !!aiRes.videoUrl);
+        console.log("[DEBUG] Has video_url:", !!(aiRes as any).video_url);
+        
+        let botMessage: ChatMessage;
+        
+        if (aiRes.videoUrl || (aiRes as any).video_url) {
+          const videoUrl = aiRes.videoUrl || (aiRes as any).video_url;
+          console.log("[DEBUG] Video response received:", aiRes);
+          console.log("[DEBUG] videoUrl:", videoUrl, "typeof:", typeof videoUrl);
+          const videoId = getYoutubeId(videoUrl);
+          console.log("[DEBUG] getYoutubeId input:", videoUrl, "videoId:", videoId);
+          const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
+          console.log("[DEBUG] iframe src:", iframeSrc);
+          botMessage = {
+            type: "bot",
+            content: (
+              <div>
+                <iframe
+                  width="320"
+                  height="180"
+                  src={iframeSrc}
+                  title={aiRes.videoTitle || (aiRes as any).video_title || "추천 영상"}
+                  style={{ border: "none" }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="rounded mb-2"
+                ></iframe>
+                <div>{aiRes.response}</div>
+                <button
+                  onClick={() => handleCommentSummary(videoUrl)}
+                  className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                >
+                  📊 댓글 요약 보기
+                </button>
+              </div>
+            )
+          };
+        } else {
+          botMessage = { type: "bot", content: aiRes.response };
+        }
+        
+        return botMessage;
+      };
+
+      const botMessage = convertBackendMessageToFrontend(aiRes);
+      
+      setMessages(prev => [...prev, botMessage]);
     } catch (e) {
       setMessages(prev => [
         ...prev,
@@ -324,6 +442,12 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
                         className="rounded mb-2"
                       ></iframe>
                       <div>{messageText}</div>
+                      <button
+                        onClick={() => handleCommentSummary(`https://www.youtube.com/watch?v=${videoId}`)}
+                        className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                      >
+                        📊 댓글 요약 보기
+                      </button>
                     </div>
                   </div>
                   <HiUser className="w-7 h-7 text-blue-400 mt-1 ml-2" />

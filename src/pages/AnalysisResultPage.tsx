@@ -55,6 +55,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
 
   console.log('AnalysisResultPage user:', user);
   console.log('AnalysisResultPage analysis:', analysis);
+  console.log('URL historyId:', historyId);
+  console.log('Analysis ID:', analysis?.id);
   
   useEffect(() => {
     if (!historyId) {
@@ -89,8 +91,46 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
     setChatInitPayload(payload);
     setIsChatOpen(true);
     setIsModalOpen(false);
-    setInitialUserMessage(payload?.message);
-    setInitialVideoUrl(payload?.videoUrl);
+    
+    // 분석 결과를 바탕으로 더 구체적인 메시지 생성
+    if (analysis) {
+      const diagnosis = (() => {
+        try {
+          if (!analysis.diagnosis) return '자세 분석 결과가 없습니다.';
+          
+          // JSON 파싱 시도
+          const parsed = JSON.parse(analysis.diagnosis);
+          if (parsed && typeof parsed === 'object' && parsed.korean) {
+            // korean 필드가 있으면 사용
+            return parsed.korean;
+          } else if (typeof parsed === 'string') {
+            // 파싱된 결과가 문자열이면 그대로 사용
+            return parsed;
+          } else {
+            // 객체이지만 korean 필드가 없으면 원본 사용
+            return analysis.diagnosis;
+          }
+        } catch (e) {
+          // JSON 파싱 실패 시 원본 문자열 사용
+          return analysis.diagnosis || '자세 분석 결과가 없습니다.';
+        }
+      })();
+      
+      // 진단 내용 정리 (특수 문자 제거 및 정리)
+      const cleanDiagnosis = diagnosis
+        .replace(/\*\*/g, '') // ** 제거
+        .replace(/\s+/g, ' ') // 연속된 공백을 하나로
+        .trim(); // 앞뒤 공백 제거
+      
+      console.log('Original diagnosis:', analysis.diagnosis);
+      console.log('Cleaned diagnosis:', cleanDiagnosis);
+      
+      if (type === 'consult') {
+        setInitialUserMessage(`자세 분석 결과: ${cleanDiagnosis}. 이에 맞는 운동을 추천해주세요.`);
+      } else if (type === 'video') {
+        setInitialUserMessage(`자세 분석 결과: ${cleanDiagnosis}. 이에 맞는 운동 영상을 추천해주세요.`);
+      }
+    }
   };
 
   // 모달 닫기 핸들러
@@ -364,7 +404,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
             isOpen={isChatOpen}
             onClose={handleChatClose}
             userId={user.id}
-            historyId={analysis.id}
+            historyId={Number(historyId)}  // analysis.id 대신 URL의 historyId 사용
             initType={chatInitType}
             initPayload={chatInitPayload}
             initialUserMessage={initialUserMessage}

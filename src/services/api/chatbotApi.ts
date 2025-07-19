@@ -39,6 +39,19 @@ export const getActiveSession = async (userId: number): Promise<string> => {
 };
 
 /**
+ * 새로운 세션을 시작합니다.
+ * @param userId - 사용자 ID
+ */
+export const startNewSession = async (userId: number): Promise<string> => {
+  try {
+    const response = await axiosInstance.post(`/chatbot/new-session/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error('새 세션 시작에 실패했습니다.');
+  }
+};
+
+/**
  * 대화 기록을 조회합니다. (현재 활성 세션)
  * @param userId - 사용자 ID
  */
@@ -75,5 +88,18 @@ export const sendChatMessage = async (request: ChatRequestDTO): Promise<ChatResp
     return response.data;
   } catch (error) {
     throw new Error('메시지 전송에 실패했습니다.');
+  }
+};
+
+/**
+ * 댓글 요약을 요청합니다.
+ * @param request - 댓글 요약 요청 데이터
+ */
+export const requestCommentSummary = async (request: ChatRequestDTO): Promise<ChatResponseDTO> => {
+  try {
+    const response = await axiosInstance.post('/chatbot/comment-summary', request);
+    return response.data;
+  } catch (error) {
+    throw new Error('댓글 요약 요청에 실패했습니다.');
   }
 }; 

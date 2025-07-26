@@ -111,7 +111,7 @@ const ExerciseListPage: React.FC = () => {
 
           if (recResponse && recResponse.recommendations?.length > 0) {
             const enrichedRecommendations = recResponse.recommendations
-              .map((recEx) => exercisesData.find((fullEx) => fullEx.name === recEx.name))
+              .map((recEx) => exercisesData.find((fullEx: Exercise) => fullEx.name === recEx.name))
               .filter(Boolean) as Exercise[];
 
             if (enrichedRecommendations.length > 0) {
@@ -198,7 +198,7 @@ const ExerciseListPage: React.FC = () => {
   return (
     <div className="bg-slate-50 dark:bg-toss-navy/20 min-h-screen">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style={{ paddingTop: 'var(--header-height, 100px)' }}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background dark:bg-toss-navy/80 rounded-2xl shadow-md" style={{ paddingTop: 'var(--header-height, 100px)' }}>
         <div className="mb-10">
             <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">운동 둘러보기</h1>
             <p className="mt-2 text-lg text-toss-gray">나에게 맞는 운동을 찾아보고 루틴에 추가해 보세요.</p>
@@ -209,7 +209,7 @@ const ExerciseListPage: React.FC = () => {
         ) : recommendationData && recommendationData.exercises.length > 0 ? (
           <RecommendedExercises recommendedData={recommendationData} />
         ) : (
-          <div className="text-center py-12 px-6 bg-white dark:bg-toss-navy/30 rounded-2xl mb-12">
+          <div className="text-center py-12 px-6 bg-background dark:bg-toss-navy/30 rounded-2xl mb-12">
             <Bot className="mx-auto h-12 w-12 text-toss-gray" />
             <p className="mt-4 font-semibold text-slate-700 dark:text-white">AI 추천을 준비 중입니다</p>
             <p className="mt-1 text-sm text-toss-gray">운동 기록이 쌓이면 더 정확한 추천을 받을 수 있어요.</p>
@@ -244,20 +244,55 @@ const ExerciseListPage: React.FC = () => {
                     className={exercisePage === 0 ? "pointer-events-none text-slate-400 dark:text-slate-600" : "hover:bg-slate-100 dark:hover:bg-slate-700"}
                   />
                 </PaginationItem>
-                {Array.from({ length: totalExercisePages }, (_, i) => i).map(pageIndex => (
-                  <PaginationItem key={pageIndex}>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => { e.preventDefault(); setExercisePage(pageIndex); }}
-                      isActive={exercisePage === pageIndex}
-                      className={exercisePage === pageIndex 
-                        ? 'bg-toss-blue text-white hover:bg-toss-blue/90' 
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-700'}
-                    >
-                      {pageIndex + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
+                {/* Show at most 10 page numbers, with ellipsis if needed */}
+                {(() => {
+                  const pageButtons = [];
+                  let start = 0;
+                  let end = totalExercisePages;
+                  if (totalExercisePages > 10) {
+                    if (exercisePage < 5) {
+                      start = 0;
+                      end = 10;
+                    } else if (exercisePage > totalExercisePages - 6) {
+                      start = totalExercisePages - 10;
+                      end = totalExercisePages;
+                    } else {
+                      start = exercisePage - 4;
+                      end = exercisePage + 6;
+                    }
+                  }
+                  if (start > 0) {
+                    pageButtons.push(
+                      <PaginationItem key="start-ellipsis">
+                        <span className="px-2">...</span>
+                      </PaginationItem>
+                    );
+                  }
+                  for (let pageIndex = start; pageIndex < end; pageIndex++) {
+                    pageButtons.push(
+                      <PaginationItem key={pageIndex}>
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); setExercisePage(pageIndex); }}
+                          isActive={exercisePage === pageIndex}
+                          className={exercisePage === pageIndex 
+                            ? 'bg-toss-blue text-black dark:text-white hover:bg-toss-blue/90' 
+                            : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'}
+                        >
+                          {pageIndex + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                  if (end < totalExercisePages) {
+                    pageButtons.push(
+                      <PaginationItem key="end-ellipsis">
+                        <span className="px-2">...</span>
+                      </PaginationItem>
+                    );
+                  }
+                  return pageButtons;
+                })()}
                 <PaginationItem>
                   <PaginationNext
                     href="#"

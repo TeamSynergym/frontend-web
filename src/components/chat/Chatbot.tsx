@@ -78,7 +78,6 @@ const Chatbot = forwardRef<any, ChatbotProps>((props, ref) => {
         initPayload={initPayload}
         onInputFocus={() => chatModalRef.current?.maximize()}
         userId={user?.id}
-        historyId={props.historyId}
       />
       <div className={`${isChatOpen ? 'hidden' : ''} sm:block`}>
         <ChatButton onClick={handleChatButtonClick} />

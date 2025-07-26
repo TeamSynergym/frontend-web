@@ -9,7 +9,6 @@ import type { AnalysisHistoryItem } from '@/types/index';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { fetchAnalysisDetail as fetchAnalysisDetailApi } from '../services/api/analysisApi';
-import ChatModal from '@/components/chat/ChatModal';
 import { sendAiCoachMessage, sendYoutubeMessage } from '../services/api/chatbotApi';
 
 interface LocationState {
@@ -45,16 +44,10 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatInitType, setChatInitType] = useState<'video' | 'consult' | null>(null);
-  const [chatInitPayload, setChatInitPayload] = useState<any>(null);
-  const [initialUserMessage, setInitialUserMessage] = useState<string | undefined>(undefined);
-  const [initialVideoUrl, setInitialVideoUrl] = useState<string | undefined>(undefined);
 
   // 사진 데이터 확인 (필요시 활용)
   // const { frontPhoto, sidePhoto } = (location.state as LocationState) || {};
 
- 
   useEffect(() => {
     // location.state.analysis가 있으면 우선 사용
     if (location.state && (location.state as any).analysis) {
@@ -85,10 +78,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
     }
   }, [analysis]);
 
-  // 챗봇 오픈 트리거 - ChatModal에서 관리하는 전역 함수 사용
+  // 챗봇 오픈 트리거 - 전역 Chatbot의 open 메서드 사용
   const handleChatOpen = (type: 'video' | 'consult', payload?: any) => {
-    setChatInitType(type);
-    setChatInitPayload(payload);
     setIsModalOpen(false);
     
     // 분석 결과를 바탕으로 더 구체적인 메시지 생성
@@ -121,35 +112,26 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
         .replace(/\s+/g, ' ') // 연속된 공백을 하나로
         .trim(); // 앞뒤 공백 제거
       
-      if (type === 'consult') {
-        setInitialUserMessage(`자세 분석 결과에 맞는 운동을 추천해주세요.`);
-      } else if (type === 'video') {
-        setInitialUserMessage(`자세 분석 결과에 맞는 운동 영상을 추천해주세요.`);
+      // 전역 Chatbot의 open 메서드 호출
+      if ((window as any).openChatbot) {
+        const initialMessage = type === 'consult' 
+          ? '자세 분석 결과에 맞는 운동을 추천해주세요.'
+          : '자세 분석 결과에 맞는 운동 영상을 추천해주세요.';
+          
+        (window as any).openChatbot(type, {
+          ...payload,
+          analysis: analysis,
+          historyId: analysis.id || (historyId ? Number(historyId) : undefined),
+          initialUserMessage: initialMessage
+        });
       }
     }
   };
-
-  // initialUserMessage가 세팅된 후에만 모달을 오픈
-  useEffect(() => {
-    if (initialUserMessage) {
-      setIsChatOpen(true);
-    }
-  }, [initialUserMessage]);
 
   // 모달 닫기 핸들러
   const handleModalClose = () => {
     setIsModalOpen(false);
   };
-
-
-  const handleChatClose = () => {
-    setIsChatOpen(false);
-    setChatInitType(null);
-    setChatInitPayload(null);
-    setInitialUserMessage(undefined);
-    setInitialVideoUrl(undefined);
-  };
-
 
 
   // 공유 기능
@@ -397,19 +379,6 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
             </div>
           </DialogContent>
         </Dialog>
-        {isChatOpen && user && analysis && (
-          <ChatModal
-            isOpen={isChatOpen}
-            onClose={handleChatClose}
-            userId={user.id}
-            historyId={analysis?.id || (historyId ? Number(historyId) : undefined)}
-            initType={chatInitType}
-            initPayload={chatInitPayload}
-            initialUserMessage={initialUserMessage}
-            initialVideoUrl={initialVideoUrl}
-            analysis={analysis} // analysis 객체 전달
-          />
-        )}
       </div>
     );
   };

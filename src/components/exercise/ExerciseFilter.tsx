@@ -28,7 +28,7 @@ const ExerciseFilter: React.FC<ExerciseFilterProps> = ({
           placeholder="찾고 있는 운동을 검색해보세요..."
           value={searchTerm}
           onChange={(e) => onSearchTermChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-toss-navy/40 border-slate-200 dark:border-slate-700 rounded-xl h-12 text-base focus:ring-2 focus:ring-toss-blue focus:border-toss-blue"
+          className="w-full pl-10 pr-4 py-3 bg-background dark:bg-toss-navy/40 border-slate-200 dark:border-slate-700 rounded-xl h-12 text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-toss-blue focus:border-toss-blue"
         />
       </div>
 

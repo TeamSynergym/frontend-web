@@ -10,7 +10,7 @@ const RecommendedExercisesLoader: React.FC = () => {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="bg-white dark:bg-slate-800/60 rounded-2xl p-4 space-y-4 shadow-sm">
+          <div key={i} className="bg-background dark:bg-slate-800/60 rounded-2xl p-4 space-y-4 shadow-sm">
             <div className="h-40 bg-slate-300 dark:bg-slate-700 rounded-lg"></div>
             <div className="space-y-3">
               <div className="h-5 bg-slate-300 dark:bg-slate-700 rounded-md w-3/4"></div>

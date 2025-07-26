@@ -19,7 +19,7 @@ const AddToRoutineModal: React.FC<AddToRoutineModalProps> = ({ isOpen, routines,
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-toss-navy/80 p-6 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-300 animate-in fade-in-0 zoom-in-95"
+        className="bg-background dark:bg-toss-navy/80 p-6 rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-300 animate-in fade-in-0 zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 모달 헤더 */}

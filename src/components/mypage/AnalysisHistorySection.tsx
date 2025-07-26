@@ -17,7 +17,10 @@ const AnalysisHistorySection: React.FC<AnalysisHistorySectionProps> = ({ history
   // 점수들의 평균을 계산하고 날짜와 함께 매핑하는 함수
   const chartData = localHistory.map(item => {
     const scores = [item.spineCurvScore, item.spineScolScore, item.pelvicScore, item.neckScore, item.shoulderScore];
-    const average = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+    const validScores = scores.filter(score => score !== 0);
+    const average = validScores.length > 0
+      ? Math.round(validScores.reduce((sum, score) => sum + score, 0) / validScores.length)
+      : 0;
     return {
       date: new Date(item.createdAt).toLocaleDateString(),
       averageScore: average
@@ -72,10 +75,11 @@ const AnalysisHistorySection: React.FC<AnalysisHistorySectionProps> = ({ history
 
         <ul className="space-y-1 mt-4">
             {localHistory.map((item) => {
-                const averageScore = Math.round(
-                    [item.spineCurvScore, item.spineScolScore, item.pelvicScore, item.neckScore, item.shoulderScore]
-                    .reduce((sum, score) => sum + score, 0) / 5
-                );
+                const scores = [item.spineCurvScore, item.spineScolScore, item.pelvicScore, item.neckScore, item.shoulderScore];
+                const validScores = scores.filter(score => score !== 0);
+                const averageScore = validScores.length > 0
+                  ? Math.round(validScores.reduce((sum, score) => sum + score, 0) / validScores.length)
+                  : 0;
                 return (
                     <li key={item.id} className="flex justify-between items-center text-sm p-3 hover:bg-muted rounded-md">
                         <span className="text-gray-600 dark:text-gray-300">{new Date(item.createdAt).toLocaleDateString()}</span>

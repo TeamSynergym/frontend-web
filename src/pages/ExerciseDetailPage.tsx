@@ -133,7 +133,7 @@ const ExerciseDetailPage: React.FC = () => {
     return (
         <div className="bg-slate-50 dark:bg-toss-navy/20 min-h-screen">
             <Header />
-            <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style={{ paddingTop: 'var(--header-height, 100px)' }}>
+            <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background dark:bg-toss-navy/80 rounded-2xl shadow-md" style={{ paddingTop: 'var(--header-height, 100px)' }}>
                 {/* 뒤로가기 버튼 */}
                 <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 text-toss-gray hover:bg-slate-200 dark:hover:bg-toss-navy/50">
                     <ArrowLeft className="mr-2 h-4 w-4" /> 목록으로 돌아가기
@@ -141,7 +141,7 @@ const ExerciseDetailPage: React.FC = () => {
 
                 <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
                     {/* 왼쪽: 이미지 */}
-                    <div className="w-full h-auto bg-white dark:bg-toss-navy/40 rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
+                    <div className="w-full h-auto bg-background dark:bg-toss-navy/40 rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
                         <img
                             src={exercise.thumbnailUrl || 'https://via.placeholder.com/600x400'}
                             alt={exercise.name}
@@ -182,7 +182,7 @@ const ExerciseDetailPage: React.FC = () => {
                         </div>
 
                         {/* 운동 설명 카드 */}
-                        <div className="p-6 bg-white dark:bg-toss-navy/40 rounded-xl shadow-lg">
+                        <div className="p-6 bg-background dark:bg-toss-navy/40 rounded-xl shadow-lg">
                             <h2 className="text-lg font-bold mb-2 text-slate-800 dark:text-white">운동 설명</h2>
                             <p className="text-toss-gray leading-relaxed">{exercise.description || '이 운동에 대한 설명이 아직 없습니다.'}</p>
                         </div>

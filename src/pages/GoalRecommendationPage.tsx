@@ -99,13 +99,13 @@ const GoalRecommendationPage: React.FC = () => {
   };
 
   const renderInitialState = () => (
-    <Card className="shadow-lg text-center">
+    <Card className="shadow-lg text-center bg-background dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
       <CardHeader>
         <div className="flex justify-center mb-4">
           <Wand2 className="w-12 h-12 text-primary" />
         </div>
-        <CardTitle className="text-2xl">AI 코치 예측 목표 설정</CardTitle>
-        <CardDescription className="pt-2">
+        <CardTitle className="text-2xl text-black dark:text-white">AI 코치 예측 목표 설정</CardTitle>
+        <CardDescription className="pt-2 text-gray-700 dark:text-gray-300">
           AI 코치가 당신의 운동 기록을 분석하여 뱃지를 수여하고
           <br />
           개인화된 주간/월간 목표를 설정해줘요.
@@ -122,15 +122,15 @@ const GoalRecommendationPage: React.FC = () => {
               AI 코치 스타일 선택
             </label>
             <Select value={selectedPersona} onValueChange={setSelectedPersona}>
-              <SelectTrigger className="w-full bg-blue-50 text-black rounded-lg shadow-lg hover:from-blue-600 hover:to-blue-800 focus:ring-4 focus:ring-blue-300">
+              <SelectTrigger className="w-full bg-blue-50 dark:bg-gray-800 text-black dark:text-white rounded-lg shadow-lg hover:from-blue-600 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700">
                 <SelectValue placeholder="코칭 스타일을 선택하세요..." />
               </SelectTrigger>
-              <SelectContent className="bg-white border border-blue-500 rounded-lg shadow-lg">
+              <SelectContent className="bg-background dark:bg-gray-900 border border-blue-500 dark:border-blue-400 rounded-lg shadow-lg">
                 {coachPersonas.map((persona) => (
                   <SelectItem
                     key={persona.value}
                     value={persona.value}
-                    className="flex items-center px-4 py-2 hover:bg-blue-100 focus:bg-blue-200 rounded-md transition-colors"
+                    className="flex items-center px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-800 focus:bg-blue-200 dark:focus:bg-blue-900 text-black dark:text-white rounded-md transition-colors"
                   >
                     <UserCheck className="w-5 h-5 text-blue-500 mr-3" />
                     {persona.label}
@@ -166,45 +166,45 @@ const GoalRecommendationPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* AI 분석 리포트 카드 */}
-        <Card className="shadow-lg bg-white/80 backdrop-blur-md border border-white/20 rounded-lg">
+        <Card className="shadow-lg bg-background/80 dark:bg-gray-900/80 backdrop-blur-md border border-white/20 dark:border-gray-700 rounded-lg">
           <CardHeader>
             <div className="flex items-center">
               <BarChart className="w-6 h-6 text-blue-500 mr-3" />
-              <CardTitle className="text-black">AI 분석 리포트</CardTitle>
+              <CardTitle className="text-black dark:text-white">AI 분석 리포트</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-black whitespace-pre-wrap">{result?.analysis_result}</p>
+            <p className="text-black dark:text-white whitespace-pre-wrap">{result?.analysis_result}</p>
           </CardContent>
         </Card>
 
         {/* 주간 및 월간 목표 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="shadow-lg bg-white/80 backdrop-blur-md border border-white/20 rounded-lg">
+          <Card className="shadow-lg bg-background/80 dark:bg-gray-900/80 backdrop-blur-md border border-white/20 dark:border-gray-700 rounded-lg">
             <CardHeader>
               <div className="flex items-center">
                 <Calendar className="w-6 h-6 text-green-700 mr-3" />
-                <CardTitle className="text-black">새로운 주간 목표</CardTitle>
+                <CardTitle className="text-black dark:text-white">새로운 주간 목표</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               {weeklyGoal && (
-                <p className="text-lg font-semibold text-green-700">
+                <p className="text-lg font-semibold text-green-700 dark:text-green-400">
                   {`주 ${weeklyGoal.workouts}회, 달성률 ${weeklyGoal.completion_rate}%`}
                 </p>
               )}
             </CardContent>
           </Card>
-          <Card className="shadow-lg bg-white/80 backdrop-blur-md border border-white/20 rounded-lg">
+          <Card className="shadow-lg bg-background/80 dark:bg-gray-900/80 backdrop-blur-md border border-white/20 dark:border-gray-700 rounded-lg">
             <CardHeader>
               <div className="flex items-center">
                 <Target className="w-6 h-6 text-blue-700 mr-3" />
-                <CardTitle className="text-black">새로운 월간 목표</CardTitle>
+                <CardTitle className="text-black dark:text-white">새로운 월간 목표</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               {monthlyGoal && (
-                <p className="text-lg font-semibold text-blue-700">
+                <p className="text-lg font-semibold text-blue-700 dark:text-blue-400">
                   {`월 ${monthlyGoal.workouts}회, 달성률 ${monthlyGoal.completion_rate}%`}
                 </p>
               )}

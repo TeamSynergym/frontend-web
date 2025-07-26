@@ -29,7 +29,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, isLiked, onLikeTo
 
   return (
     <Link to={`/exercises/${exercise.id}`} className="block group">
-      <Card className="flex flex-col h-full bg-white dark:bg-toss-navy/40 rounded-2xl overflow-hidden shadow-md border-transparent hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300">
+      <Card className="flex flex-col h-full bg-background dark:bg-toss-navy/40 rounded-2xl overflow-hidden shadow-md border-transparent hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300">
         {/* 썸네일 이미지 영역 */}
         <div className="relative w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
           {exercise.thumbnailUrl ? (

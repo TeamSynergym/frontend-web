@@ -17,6 +17,8 @@ export interface ChatResponseDTO {
   sessionId?: string;
   videoUrl?: string;
   videoTitle?: string;
+  youtubeSummary?: Record<string, any>; // YouTube 요약 정보
+  commentCount?: number; // 댓글 수
 }
 
 export interface ChatMessageDTO {

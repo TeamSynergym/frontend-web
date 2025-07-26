@@ -74,3 +74,25 @@ export const requestMergedAnalysis = async (
 export const deleteAnalysisHistory = async (analysisId: number): Promise<void> => {
   await axiosInstance.delete(`/analysis-histories/${analysisId}`);
 };
+
+/**
+ * 댓글 요약을 요청합니다.
+ * @param userId - 사용자 ID
+ * @param historyId - 분석 기록 ID
+ * @param message - 사용자 메시지
+ * @param videoUrl - YouTube 영상 URL
+ */
+export const requestCommentSummary = async (
+  userId: number,
+  historyId: number,
+  message: string,
+  videoUrl?: string
+): Promise<any> => {
+  const res = await axiosInstance.post('/chatbot/comment-summary', {
+    userId,
+    historyId,
+    message,
+    videoUrl
+  });
+  return res.data;
+};

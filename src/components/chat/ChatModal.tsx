@@ -25,10 +25,6 @@ interface Props {
   initPayload?: any;
   onInputFocus?: () => void;
   userId?: number;
-  historyId?: number;
-  initialUserMessage?: string;
-  initialVideoUrl?: string;
-  analysis?: AnalysisHistoryItem; // 추가
 }
 
 interface ChatMessage {
@@ -49,7 +45,7 @@ function getYoutubeId(url: string) {
   return match ? match[1] : '';
 }
 
-const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPayload, onInputFocus, userId, historyId, initialUserMessage, initialVideoUrl, analysis }, ref) => {
+const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPayload, onInputFocus, userId }, ref) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string>("");
@@ -60,6 +56,12 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
+  // initPayload에서 모든 필요한 데이터 추출
+  const analysis = initPayload?.analysis;
+  const historyId = initPayload?.historyId;
+  const initialUserMessage = initPayload?.initialUserMessage;
+  const initialVideoUrl = initPayload?.initialVideoUrl;
+  
   // analysis에서 직접 추천운동명 가져오기
   const recommendedExerciseName = analysis?.recommendedExercise?.name || null;
   const [showRoutineSelect, setShowRoutineSelect] = useState(false);
@@ -68,8 +70,11 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
   // handleCommentSummary를 ChatModal 함수 내부에 선언
   const handleCommentSummary = async (videoUrl: string) => {
     if (!userId || !historyId) return;
+    
     const userMessage: ChatMessage = { type: "user", content: `댓글 요약해주세요: ${videoUrl}` };
     setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    
     const payload: ChatRequestDTO = {
       type: 'comment_summary',
       userId,
@@ -77,8 +82,11 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
       message: `댓글 요약해주세요: ${videoUrl}`,
       videoUrl,
     };
+    
     try {
       const aiRes = await sendYoutubeMessage(payload);
+      setIsLoading(false);
+      
       if (aiRes.type === 'error') {
         setMessages(prev => [
           ...prev,
@@ -86,9 +94,30 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
         ]);
         return;
       }
-      const botMessage: ChatMessage = { type: "bot", content: aiRes.response };
+      
+      // 댓글 요약 응답 처리
+      let botContent: React.ReactNode;
+      
+      if (aiRes.youtubeSummary?.comment_summary) {
+        // 댓글 요약이 있는 경우
+        botContent = (
+          <div>
+            <div className="mb-3 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+              <h4 className="font-semibold text-yellow-800 mb-2">📊 댓글 요약</h4>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.youtubeSummary.comment_summary}</ReactMarkdown>
+            </div>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.response}</ReactMarkdown>
+          </div>
+        );
+      } else {
+        // 댓글 요약이 없는 경우 (댓글 수 부족 등)
+        botContent = <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.response}</ReactMarkdown>;
+      }
+      
+      const botMessage: ChatMessage = { type: "bot", content: botContent };
       setMessages(prev => [...prev, botMessage]);
     } catch (e) {
+      setIsLoading(false);
       setMessages(prev => [
         ...prev,
         { type: "bot", content: "댓글 요약 중 오류가 발생했습니다. 다시 시도해 주세요." }
@@ -124,6 +153,7 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
   const handleShowRoutineSelect = async () => {
     if (!userId) return;
     const routines = await getRoutinesByUser(userId);
+    console.log('[FRONTEND DEBUG] 기존 루틴 목록:', routines); // 로그 추가
     setUserRoutines(routines);
     setShowRoutineSelect(true);
   };
@@ -155,43 +185,117 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
     }
   };
 
-  // convertBackendMessageToFrontend 함수는 마크다운 변환 포함
-  const convertBackendMessageToFrontend = (msg: ChatMessageDTO): ChatMessage => {
-    if (msg.type === 'bot' && msg.videoUrl) {
-      const videoId = getYoutubeId(msg.videoUrl);
+  // getChatHistory 응답용 변환 함수 (이미 변환된 메시지 배열 처리)
+  const convertHistoryMessageToFrontend = (historyMsg: any): ChatMessage => {
+    if (historyMsg.videoUrl) {
+      // 유튜브 영상 메시지 처리
+      const videoId = getYoutubeId(historyMsg.videoUrl);
+      const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
+      
       return {
-        type: 'bot',
+        type: "bot",
         content: (
           <div>
             <iframe
               width="320"
               height="180"
-              src={`https://www.youtube.com/embed/${videoId}`}
-              title="YouTube video player"
-              style={{ border: 'none' }}
+              src={iframeSrc}
+              title="추천 영상"
+              style={{ border: "none" }}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="rounded mb-2"
             ></iframe>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-            <button
-              onClick={() => handleCommentSummary(msg.videoUrl!)}
-              className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
-            >
-              📊 댓글 요약 보기
-            </button>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{historyMsg.content}</ReactMarkdown>
           </div>
-        ),
-        timestamp: msg.timestamp
+        )
+      };
+    } else {
+      // 일반 텍스트 메시지 처리
+      return {
+        type: historyMsg.type as "user" | "bot",
+        content: <ReactMarkdown remarkPlugins={[remarkGfm]}>{historyMsg.content}</ReactMarkdown>
       };
     }
-    return {
-      type: msg.type as "user" | "bot",
-      content: msg.type === 'bot'
-        ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-        : msg.content,
-      timestamp: msg.timestamp
-    };
+  };
+
+  // convertBackendMessageToFrontend 함수는 파일 상단에 하나만 정의
+  const convertBackendMessageToFrontend = (aiRes: any) => {
+    let botMessage: ChatMessage;
+
+    if (aiRes.videoUrl || (aiRes as any).video_url) {
+      const videoUrl = aiRes.videoUrl || (aiRes as any).video_url;
+      const videoId = getYoutubeId(videoUrl);
+      const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
+      const commentCount = aiRes.commentCount || 0;
+      const commentSummary = aiRes.youtubeSummary?.comment_summary;
+      const hasCommentSummary =
+        typeof commentSummary === "string" &&
+        commentSummary.trim() !== "" &&
+        commentSummary !== "댓글 개수가 10개 미만으로 댓글 요약을 제공하지 않습니다.";
+      const showCommentButton = commentCount >= 10 && hasCommentSummary;
+
+      // --- 스크립트 요약 카드 ---
+      const summary = aiRes.youtubeSummary?.summary;
+      const intensity = aiRes.youtubeSummary?.intensity;
+      const routine = aiRes.youtubeSummary?.routine;
+      const targetBodyParts = aiRes.youtubeSummary?.target_body_parts;
+
+      botMessage = {
+        type: "bot",
+        content: (
+          <div>
+            <iframe
+              width="320"
+              height="180"
+              src={iframeSrc}
+              title={aiRes.videoTitle || (aiRes as any).video_title || "추천 영상"}
+              style={{ border: "none" }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="rounded mb-2"
+            ></iframe>
+            {/* 스크립트 요약 카드 */}
+            {summary && (
+              <div className="mb-3 p-3 bg-gray-50 rounded-lg border-l-4 border-blue-400">
+                <h4 className="font-semibold text-blue-800 mb-2">🎬 영상 요약</h4>
+                <div className="mb-2"><b>요약:</b> <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary}</ReactMarkdown></div>
+                {intensity && <div className="mb-1"><b>운동 강도:</b> {intensity}</div>}
+                {routine && Array.isArray(routine) && (
+                  <div className="mb-1">
+                    <b>루틴:</b>
+                    <ul className="list-disc ml-5">
+                      {routine.map((step: string, idx: number) => (
+                        <li key={idx}><ReactMarkdown remarkPlugins={[remarkGfm]}>{step}</ReactMarkdown></li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {targetBodyParts && Array.isArray(targetBodyParts) && (
+                  <div className="mb-1"><b>타겟 부위:</b> {targetBodyParts.join(", ")}</div>
+                )}
+              </div>
+            )}
+            {/* 댓글 요약 버튼/메시지 */}
+            {showCommentButton ? (
+              <button
+                onClick={() => handleCommentSummary(videoUrl)}
+                className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+              >
+                📊 댓글 요약 보기 ({commentCount}개 댓글)
+              </button>
+            ) : null}
+          </div>
+        )
+      };
+    } else {
+      botMessage = {
+        type: "bot",
+        content: <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.response}</ReactMarkdown>
+      };
+    }
+
+    return botMessage;
   };
 
   // userId, sessionId가 바뀔 때만 상태 초기화
@@ -231,6 +335,7 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
         if (!sid || sid.trim() === '') {
           setSessionId('');
           setMessages([]);
+          console.log('[DEBUG] 세션이 없어서 빈 메시지로 초기화');
           return '';
         }
         setSessionId(sid);
@@ -238,13 +343,16 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
       if (sid) {
         const historyRes = await getChatHistory(userId);
         const historyData = historyRes || [];
-        setMessages(historyData.map(convertBackendMessageToFrontend));
+        console.log('[DEBUG] 이전 대화 내용 로드:', historyData.length, '개 메시지');
+        setMessages(historyData.map(convertHistoryMessageToFrontend));
       } else {
         setMessages([]);
+        console.log('[DEBUG] 세션은 있지만 대화 내용이 없음');
       }
       return sid;
     } catch (error) {
       setMessages([]);
+      console.log('[DEBUG] 대화 내용 로드 중 에러:', error);
       return null;
     }
   };
@@ -274,64 +382,31 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
     ) {
       initialRequestSentRef.current = true;
       setIsLoading(true);
-      const message = initialUserMessage || (initType === 'video' ? '추천 영상 보여줘' : '운동 추천해줘');
-      const payload: ChatRequestDTO = {
-        type: initType === 'video' ? 'recommend' : undefined,
-        userId,
-        historyId,
-        message,
-      };
-      const apiCall = initType === 'video' ? sendYoutubeMessage : sendAiCoachMessage;
-      apiCall(payload).then(aiRes => {
-        setIsLoading(false);
-        const userMsg: ChatMessage = { type: 'user', content: message };
-        
-        // AI 응답을 프론트엔드 메시지 형식으로 변환
-        const convertBackendMessageToFrontend = (aiRes: any) => {
-          
-          let botMessage: ChatMessage;
-          
-          if (aiRes.videoUrl || (aiRes as any).video_url) {
-            const videoUrl = aiRes.videoUrl || (aiRes as any).video_url;
-            const videoId = getYoutubeId(videoUrl);
-            const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
-            botMessage = {
-              type: "bot",
-              content: (
-                <div>
-                  <iframe
-                    width="320"
-                    height="180"
-                    src={iframeSrc}
-                    title={aiRes.videoTitle || (aiRes as any).video_title || "추천 영상"}
-                    style={{ border: "none" }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="rounded mb-2"
-                  ></iframe>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.response}</ReactMarkdown>
-                  <button
-                    onClick={() => handleCommentSummary(videoUrl)}
-                    className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
-                  >
-                    📊 댓글 요약 보기
-                  </button>
-                </div>
-              )
-            };
-          } else {
-            botMessage = {
-              type: "bot",
-              content: <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.response}</ReactMarkdown>
-            };
-          }
-          
-          return botMessage;
+      
+      // 먼저 이전 대화 내용을 로드한 후 새로운 메시지 추가
+      loadSessionAndHistory().then((sid) => {
+        const message = initialUserMessage || (initType === 'video' ? '추천 영상 보여줘' : '운동 추천해줘');
+        const payload: ChatRequestDTO = {
+          type: initType === 'video' ? 'recommend' : undefined,
+          userId,
+          historyId,
+          message,
         };
-
-        const botMsg = convertBackendMessageToFrontend(aiRes);
-        setMessages(prev => [...prev, userMsg, botMsg]); // 이전 대화내역에 추가
-      }).catch(() => setIsLoading(false));
+        const apiCall = initType === 'video' ? sendYoutubeMessage : sendAiCoachMessage;
+        console.log('[DEBUG] API 호출 타입:', initType === 'video' ? 'YouTube' : 'AI Coach');
+        apiCall(payload).then(aiRes => {
+          setIsLoading(false);
+          const userMsg: ChatMessage = { type: 'user', content: message };
+          
+          // AI 응답을 프론트엔드 메시지 형식으로 변환
+          const botMsg = convertBackendMessageToFrontend(aiRes);
+          console.log('[DEBUG]', initType === 'video' ? 'YouTube' : 'AI Coach', '응답 처리 완료:', botMsg);
+          setMessages(prev => [...prev, userMsg, botMsg]); // 이전 대화내역에 추가
+        }).catch((error) => {
+          console.log('[DEBUG]', initType === 'video' ? 'YouTube' : 'AI Coach', 'API 호출 실패:', error);
+          setIsLoading(false);
+        });
+      });
     }
   }, [isOpen, userId, historyId, initialUserMessage, initialVideoUrl, initType]);
 
@@ -377,50 +452,8 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
         return;
       }
       // AI 응답을 프론트엔드 메시지 형식으로 변환
-      const convertBackendMessageToFrontend = (aiRes: any) => {
-        
-        let botMessage: ChatMessage;
-        
-        if (aiRes.videoUrl || (aiRes as any).video_url) {
-          const videoUrl = aiRes.videoUrl || (aiRes as any).video_url;
-          const videoId = getYoutubeId(videoUrl);
-          const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
-          botMessage = {
-            type: "bot",
-            content: (
-              <div>
-                <iframe
-                  width="320"
-                  height="180"
-                  src={iframeSrc}
-                  title={aiRes.videoTitle || (aiRes as any).video_title || "추천 영상"}
-                  style={{ border: "none" }}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="rounded mb-2"
-                ></iframe>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.response}</ReactMarkdown>
-                <button
-                  onClick={() => handleCommentSummary(videoUrl)}
-                  className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
-                >
-                  📊 댓글 요약 보기
-                </button>
-              </div>
-            )
-          };
-        } else {
-          botMessage = {
-            type: "bot",
-            content: <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.response}</ReactMarkdown>
-          };
-        }
-        
-        return botMessage;
-      };
-
       const botMessage = convertBackendMessageToFrontend(aiRes);
-      
+      console.log('setMessages에 들어가는 botMessage:', botMessage);
       setMessages(prev => [...prev, botMessage]);
     } catch (e) {
       setIsLoading(false);
@@ -459,7 +492,7 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
   return (
     <div
       className={`
-        fixed z-50 bg-white shadow-xl border border-gray-200 transition-all duration-300 flex flex-col
+        fixed z-50 bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col
         left-0 top-0 w-screen h-screen rounded-none
         sm:left-auto sm:top-auto sm:right-[6.5rem] sm:bottom-6 sm:rounded-xl
         ${isMinimized
@@ -470,17 +503,18 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
       `}
     >
       {/* 헤더: 타이틀, 닫기 버튼, 클릭 시 크기 토글 */}
-      <div className="flex justify-between items-center p-4 border-b cursor-pointer select-none" onClick={handleHeaderClick} title="클릭 시 크기 전환">
-        <span className="font-semibold text-lg">Synergym AI</span>
+      <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer select-none bg-white dark:bg-gray-900" onClick={handleHeaderClick} title="클릭 시 크기 전환">
+        <span className="font-semibold text-lg text-gray-900 dark:text-white">Synergym AI</span>
         <button onClick={e => { e.stopPropagation(); onClose(); }}>
-          <X className="w-5 h-5 text-gray-600 hover:text-black" />
+          <X className="w-5 h-5 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white" />
         </button>
       </div>
       {/* 메시지 영역 */}
       <div
         ref={messagesEndRef}
-        className="p-4 flex-1 overflow-y-auto text-sm text-gray-700 flex flex-col"
+        className="p-4 flex-1 overflow-y-auto text-sm text-gray-700 dark:text-gray-100 flex flex-col bg-white dark:bg-gray-900"
       >
+        {(() => { console.log('messages:', messages); return null; })()}
         {messages.map((msg, idx) => {
           if (msg.type === "bot" && typeof msg.content === "string" && msg.content.startsWith("[운동영상]")) {
             const videoId = "fFIL0rlRH78";
@@ -488,7 +522,7 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
             return (
               <div key={idx} className="flex items-end gap-2 mb-4">
                 <div className="flex flex-col items-start">
-                  <div className="bg-blue-100 text-gray-800 rounded-2xl px-4 py-3 max-w-[420px] shadow-sm relative">
+                  <div className="bg-blue-100 dark:bg-blue-900 text-gray-800 dark:text-white rounded-2xl px-4 py-3 max-w-[420px] shadow-sm relative">
                     <div>
                       <iframe
                         width="320"
@@ -509,7 +543,7 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
                       </button>
                     </div>
                   </div>
-                  <HiUser className="w-7 h-7 text-blue-400 mt-1 ml-2" />
+                  <HiUser className="w-7 h-7 text-blue-400 dark:text-blue-300 mt-1 ml-2" />
                 </div>
               </div>
             );
@@ -517,42 +551,42 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
           return msg.type === 'bot' ? (
             <div key={idx} className="flex items-end gap-2 mb-4">
               <div className="flex flex-col items-start">
-                <div className="bg-blue-100 text-gray-800 rounded-2xl px-4 py-3 max-w-[420px] shadow-sm relative">
+                <div className="bg-blue-100 dark:bg-blue-900 text-gray-800 dark:text-white rounded-2xl px-4 py-3 max-w-[420px] shadow-sm relative">
                   {msg.content}
                 </div>
                 {/* bot 메시지 하단에 루틴 추가 버튼 표시 */}
                 {recommendedExerciseName && (
                   <div className="flex gap-2 mt-2 ml-2">
                     <button 
-                      className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm" 
+                      className="bg-green-500 dark:bg-green-700 hover:bg-green-600 dark:hover:bg-green-800 text-white px-2 py-1 rounded text-sm" 
                       onClick={handleAddToNewRoutine}
                     >
                       신규 루틴에 추가
                     </button>
                     <button 
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm" 
+                      className="bg-blue-500 dark:bg-blue-700 hover:bg-blue-600 dark:hover:bg-blue-800 text-white px-2 py-1 rounded text-sm" 
                       onClick={handleShowRoutineSelect}
                     >
                       기존 루틴에 추가
                     </button>
                   </div>
                 )}
-                <HiUser className="w-7 h-7 text-blue-400 mt-1 ml-2" />
+                <HiUser className="w-7 h-7 text-blue-400 dark:text-blue-300 mt-1 ml-2" />
               </div>
             </div>
           ) : (
             <div key={idx} className="flex items-end gap-2 mb-4 justify-end">
               <div className="flex flex-col items-end">
-                <div className="bg-blue-500 text-white rounded-2xl px-4 py-3 max-w-[420px] shadow-sm relative">
+                <div className="bg-blue-500 dark:bg-blue-700 text-white rounded-2xl px-4 py-3 max-w-[420px] shadow-sm relative">
                   {msg.content}
                 </div>
-                <HiUser className="w-7 h-7 text-blue-500 mt-1 mr-2 self-end" />
+                <HiUser className="w-7 h-7 text-blue-500 dark:text-blue-300 mt-1 mr-2 self-end" />
               </div>
             </div>
           );
         })}
         {isLoading && (
-  <div className="flex items-center gap-2 text-blue-500 py-2">
+  <div className="flex items-center gap-2 text-blue-500 dark:text-blue-300 py-2">
     <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
@@ -563,14 +597,14 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
       </div>
       {/* 입력창/전송 폼 */}
       <form
-        className="flex items-center border-t p-3 gap-2"
+        className="flex items-center border-t border-gray-200 dark:border-gray-700 p-3 gap-2 bg-white dark:bg-gray-900"
         onSubmit={e => {
           e.preventDefault();
           handleSend();
         }}
       >
         <input
-          className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="flex-1 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-600"
           type="text"
           placeholder="메시지를 입력하세요..."
           value={input}
@@ -582,11 +616,43 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
         />
         <button
           type="submit"
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-blue-500 dark:bg-blue-700 hover:bg-blue-600 dark:hover:bg-blue-800 text-white px-4 py-2 rounded"
         >
           전송
         </button>
       </form>
+      {/* 기존 루틴 선택 모달 렌더링 부분(예시) */}
+      {showRoutineSelect && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">기존 루틴에 추가</h3>
+            {(() => { console.log('[FRONTEND DEBUG] 렌더링되는 userRoutines:', userRoutines); return null; })()}
+            {userRoutines.length > 0 ? (
+              <ul className="space-y-2">
+                {userRoutines.map(routine => (
+                  <li key={routine.id} className="flex justify-between items-center p-2 border rounded border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <span className="text-gray-900 dark:text-white">{routine.name}</span>
+                    <button
+                      className="bg-blue-500 dark:bg-blue-700 hover:bg-blue-600 dark:hover:bg-blue-800 text-white px-2 py-1 rounded text-sm"
+                      onClick={() => handleAddToExistingRoutine(routine.id)}
+                    >
+                      추가
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-gray-500 dark:text-gray-300">추가할 수 있는 루틴이 없습니다.</div>
+            )}
+            <button
+              className="mt-4 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-4 py-2 rounded"
+              onClick={() => setShowRoutineSelect(false)}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

@@ -32,7 +32,7 @@ const RecommendedExercises: React.FC<RecommendedExercisesProps> = ({ recommended
             className="group block animate-fade-in"
             style={{ animationDelay: `${index * 100}ms` }}
           >
-            <Card className="h-full bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <Card className="h-full bg-background/80 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
               <div className="relative w-full h-40 bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center">
                 {exercise.thumbnailUrl ? (
                   <img

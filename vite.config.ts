@@ -12,12 +12,13 @@ export default defineConfig({
     }
   },
   server: {
+    allowedHosts: true,
     host: '0.0.0.0', // 🔥 외부 IP 접근 허용
     port: 5173,       // 원래 포트 유지 (원하면 바꿔도 됨)
     hmr: {
       protocol: 'ws',
       host: '192.168.2.168',
       port: 5173,
-    }
+    },
   }
 })

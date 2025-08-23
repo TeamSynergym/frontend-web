@@ -143,6 +143,9 @@ const AnalysisSharePage: React.FC = () => {
             <h2 className="font-bold text-lg mb-4">AI 코치 소견</h2>
             <p className="text-gray-600 leading-relaxed">
               {aiOpinion}
+
+              <p className="text-gray-600 dark:text-gray-400 mb-6 mt-6">🚨 본 진단 결과는 AI 기반 분석으로 참고용이며, 개인차나 촬영 환경에 따라 실제와 다를 수 있습니다. 정확한 진단이 필요하시면 전문의와 상담하시기 바랍니다. 🚨</p>
+
             </p>
           </Card>
         </div>

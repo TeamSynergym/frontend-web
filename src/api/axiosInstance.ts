@@ -16,7 +16,7 @@ function baseURL() {
     return 'http://192.168.2.168:8081/api';
   } else {
     // 그 외 호스트명이나 도메인
-    return 'http://192.168.2.168:8081/api';
+    return '/api';
   }
   
 }

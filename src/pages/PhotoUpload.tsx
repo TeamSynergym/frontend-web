@@ -34,14 +34,14 @@ const PhotoUpload: React.FC = () => {
       <Button asChild variant="secondary" className="w-full cursor-pointer">
         <label>
           <HiUpload className="w-5 h-5 inline-block mr-1" /> {photo ? "사진 변경" : "사진 선택"}
-          <input 
-            type="file" 
-            accept="image/*" 
-            className="hidden" 
-            capture="environment" 
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            capture="environment"
             onChange={e => {
               e.target.files && setPhoto(e.target.files[0]);
-            }} 
+            }}
           />
         </label>
       </Button>
@@ -103,7 +103,8 @@ const PhotoUpload: React.FC = () => {
         ) : (
           <Card className="p-8">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">사진 업로드</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">정확한 분석을 위해 앞모습 사진을 업로드해주세요.</p>
+            <p className="text-gray-600 dark:text-gray-400">정확한 분석을 위해 앞모습 사진을 업로드해주세요.</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">카메라 정면을 향해 앉거나 서신 후, 머리부터 발끝까지 전신이 화면에 완전히 들어오도록 촬영해주세요. 정확한 진단을 위해 본인만 단독으로 나오도록 해주시면 됩니다.</p>
             <div className="flex flex-col gap-6 mb-6">
               <PhotoUploader photo={frontPhoto} setPhoto={setFrontPhoto} title="앞모습 사진 (필수)" exampleUrl="https://placehold.co/300x400/BFDBFE/1E40AF?text=Front+View" />
               {/* 측면사진 토글 */}

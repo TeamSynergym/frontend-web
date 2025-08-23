@@ -81,13 +81,13 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
   // 챗봇 오픈 트리거 - 전역 Chatbot의 open 메서드 사용
   const handleChatOpen = (type: 'video' | 'consult', payload?: any) => {
     setIsModalOpen(false);
-    
+
     // 분석 결과를 바탕으로 더 구체적인 메시지 생성
     if (analysis) {
       const diagnosis = (() => {
         try {
           if (!analysis.diagnosis) return '자세 분석 결과가 없습니다.';
-          
+
           // JSON 파싱 시도
           const parsed = JSON.parse(analysis.diagnosis);
           if (parsed && typeof parsed === 'object' && parsed.korean) {
@@ -105,19 +105,19 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
           return analysis.diagnosis || '자세 분석 결과가 없습니다.';
         }
       })();
-      
+
       // 진단 내용 정리 (특수 문자 제거 및 정리)
       const cleanDiagnosis = diagnosis
         .replace(/\*\*/g, '') // ** 제거
         .replace(/\s+/g, ' ') // 연속된 공백을 하나로
         .trim(); // 앞뒤 공백 제거
-      
+
       // 전역 Chatbot의 open 메서드 호출
       if ((window as any).openChatbot) {
-        const initialMessage = type === 'consult' 
+        const initialMessage = type === 'consult'
           ? '자세 분석 결과에 맞는 운동을 추천해주세요.'
           : '자세 분석 결과에 맞는 운동 영상을 추천해주세요.';
-          
+
         (window as any).openChatbot(type, {
           ...payload,
           analysis: analysis,
@@ -139,7 +139,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
     if (!analysis) return;
 
     const shareUrl = `${window.location.origin}/analysis-share/${analysis.id}`;
-    
+
     try {
       if (navigator.share) {
         await navigator.share({
@@ -234,8 +234,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
         {/* 헤더 */}
         <header className="relative flex items-center justify-center mb-6">
           {!isReadOnly && (
-            <button 
-              onClick={() => navigate(-1)} 
+            <button
+              onClick={() => navigate(-1)}
               className="absolute left-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
               title="뒤로 가기"
             >
@@ -244,7 +244,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
           )}
           <h1 className="text-xl sm:text-2xl font-bold">AI 분석 결과</h1>
           {!isReadOnly && (
-            <button 
+            <button
               onClick={handleShare}
               className="absolute right-0 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
               title="결과 공유하기"
@@ -307,7 +307,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
             )}
           </div>
         </Card>
-        
+
         {/* AI 코치 소견 카드 */}
         <Card className="p-6 mb-6">
           <h2 className="font-bold text-lg mb-4">AI 코치 소견</h2>
@@ -315,13 +315,13 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
             {(() => {
               try {
                 if (!analysis.diagnosis) return 'AI 진단 정보가 없습니다.';
-                
+
                 // Try to parse as JSON first (in case it's a JSON string)
                 const parsed = JSON.parse(analysis.diagnosis);
                 if (parsed && typeof parsed === 'object' && parsed.korean) {
                   return parsed.korean;
                 }
-                
+
                 // If not a JSON object or doesn't have korean key, return as is
                 return analysis.diagnosis;
               } catch (e) {
@@ -329,6 +329,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
                 return analysis.diagnosis || 'AI 진단 정보가 없습니다.';
               }
             })()}
+            <p className="text-gray-600 dark:text-gray-400 mb-6 mt-6">🚨 본 진단 결과는 AI 기반 분석으로 참고용이며, 개인차나 촬영 환경에 따라 실제와 다를 수 있습니다. 정확한 진단이 필요하시면 전문의와 상담하시기 바랍니다. 🚨</p>
           </p>
         </Card>
 
@@ -336,8 +337,15 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
         {!isReadOnly && (
           <Button
             className="w-full !py-4 !text-base !font-bold bg-blue-600 hover:bg-blue-700 text-white"
+            // onClick={() => {
+            //   setIsModalOpen(true);
+            // }}
             onClick={() => {
-              setIsModalOpen(true);
+              handleChatOpen('video', {
+                videoUrl: 'https://www.youtube.com/watch?v=fFIL0rlRH78',
+                thumbnail: 'https://img.youtube.com/vi/fFIL0rlRH78/0.jpg',
+                message: '스크립트 요약과 댓글의 분석이 필요할 경우 요청주세요.'
+              });
             }}
           >
             맞춤 운동 추천 보기

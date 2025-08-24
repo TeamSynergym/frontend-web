@@ -40,12 +40,13 @@ export interface Routine {
 export interface Exercise {
   id: number;
   name: string;
-  category: string | null;
+  type: string | null;
   description: string | null;
   difficulty: string | null;
   posture: string | null;
   bodyPart: string | null;
   thumbnailUrl: string | null;
+  url: string | null;
   liked?: boolean;
   likeCount?: number;
 }

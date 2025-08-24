@@ -66,6 +66,7 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
   const recommendedExerciseName = analysis?.recommendedExercise?.name || null;
   const [showRoutineSelect, setShowRoutineSelect] = useState(false);
   const [userRoutines, setUserRoutines] = useState<any[]>([]); // Routine 타입으로 교체 가능
+  const [routinesLoaded, setRoutinesLoaded] = useState(false); // 루틴 로드 상태 추적
 
   // handleCommentSummary를 ChatModal 함수 내부에 선언
   const handleCommentSummary = async (videoUrl: string) => {
@@ -149,12 +150,23 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
     }
   };
 
-  // 기존 루틴에 추가 버튼 클릭 시 루틴 목록 로드 및 모달 노출
+  // 기존 루틴에 추가 버튼 클릭 시 루틴 목록 로드 및 모달 노출 (캐싱 적용)
   const handleShowRoutineSelect = async () => {
     if (!userId) return;
-    const routines = await getRoutinesByUser(userId);
-    console.log('[FRONTEND DEBUG] 기존 루틴 목록:', routines); // 로그 추가
-    setUserRoutines(routines);
+    
+    // 이미 루틴을 로드했다면 캐시된 데이터 사용
+    if (!routinesLoaded) {
+      try {
+        const routines = await getRoutinesByUser(userId);
+        console.log('[FRONTEND DEBUG] 기존 루틴 목록 로드:', routines);
+        setUserRoutines(routines);
+        setRoutinesLoaded(true);
+      } catch (error) {
+        console.error('[FRONTEND ERROR] 루틴 목록 로드 실패:', error);
+        setUserRoutines([]);
+      }
+    }
+    
     setShowRoutineSelect(true);
   };
 
@@ -221,6 +233,8 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
 
   // convertBackendMessageToFrontend 함수는 파일 상단에 하나만 정의
   const convertBackendMessageToFrontend = (aiRes: any) => {
+    console.log('[DEBUG] === convertBackendMessageToFrontend 함수 시작 ===');
+    console.log('[DEBUG] 입력받은 aiRes:', aiRes);
     let botMessage: ChatMessage;
 
     if (aiRes.videoUrl || (aiRes as any).video_url) {
@@ -288,6 +302,80 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
           </div>
         )
       };
+    } else if (aiRes.type === 'ai_coach' && (aiRes.exercise_info || aiRes.exerciseInfo)) {
+      // AI 코치 응답인 경우 운동 정보와 함께 표시
+      console.log('[DEBUG] === AI 코치 응답 감지 시작 ===');
+      console.log('[DEBUG] aiRes:', aiRes);
+      console.log('[DEBUG] aiRes.type:', aiRes.type);
+      console.log('[DEBUG] aiRes.type === ai_coach:', aiRes.type === 'ai_coach');
+      console.log('[DEBUG] exercise_info:', aiRes.exercise_info);
+      console.log('[DEBUG] exerciseInfo:', aiRes.exerciseInfo);
+      console.log('[DEBUG] exercise_info 존재:', !!aiRes.exercise_info);
+      console.log('[DEBUG] exerciseInfo 존재:', !!aiRes.exerciseInfo);
+      
+      // exercise_info 또는 exerciseInfo 중 존재하는 것 사용
+      const exerciseInfo = aiRes.exercise_info || aiRes.exerciseInfo;
+      console.log('[DEBUG] 최종 사용할 exerciseInfo:', exerciseInfo);
+      console.log('[DEBUG] 운동 정보 카드 생성 시작');
+      botMessage = {
+        type: "bot",
+        content: (
+          <div>
+            {/* AI 코치 응답 메시지 */}
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiRes.response}</ReactMarkdown>
+            
+            {/* 운동 정보 카드 */}
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">💪 추천 운동 정보</h4>
+              
+              {/* 운동 이미지 */}
+              {exerciseInfo.thumbnail_url && (
+                <div className="mb-3">
+                  <img 
+                    src={exerciseInfo.thumbnail_url} 
+                    alt={exerciseInfo.name}
+                    className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => {
+                      if (exerciseInfo.url) {
+                        console.log('[DEBUG] 썸네일 클릭 - URL 열기:', exerciseInfo.url);
+                        window.open(exerciseInfo.url, '_blank');
+                      }
+                    }}
+                    title="클릭하면 운동 상세 정보를 확인할 수 있습니다"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">클릭하면 운동 상세 정보를 확인할 수 있습니다</div>
+                </div>
+              )}
+              
+              {/* 운동 상세 정보 */}
+              <div className="space-y-2 text-sm">
+                <div><span className="font-medium text-gray-700 dark:text-gray-300">운동명:</span> {exerciseInfo.name}</div>
+                {exerciseInfo.category && (
+                  <div><span className="font-medium text-gray-700 dark:text-gray-300">카테고리:</span> {exerciseInfo.category}</div>
+                )}
+                {exerciseInfo.difficulty && (
+                  <div><span className="font-medium text-gray-700 dark:text-gray-300">난이도:</span> {exerciseInfo.difficulty}</div>
+                )}
+                {exerciseInfo.target_body_parts && (
+                  <div><span className="font-medium text-gray-700 dark:text-gray-300">타겟 부위:</span> {exerciseInfo.target_body_parts}</div>
+                )}
+                {exerciseInfo.equipment && (
+                  <div><span className="font-medium text-gray-700 dark:text-gray-300">필요 장비:</span> {exerciseInfo.equipment}</div>
+                )}
+                {exerciseInfo.calories_burn && (
+                  <div><span className="font-medium text-gray-700 dark:text-gray-300">소모 칼로리:</span> {exerciseInfo.calories_burn}</div>
+                )}
+                {exerciseInfo.description && (
+                  <div className="mt-3 p-3 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">운동 설명:</span>
+                    <div className="mt-1 text-gray-600 dark:text-gray-400">{exerciseInfo.description}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      };
     } else {
       botMessage = {
         type: "bot",
@@ -295,6 +383,8 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
       };
     }
 
+    console.log('[DEBUG] === convertBackendMessageToFrontend 함수 종료 ===');
+    console.log('[DEBUG] 반환할 botMessage:', botMessage);
     return botMessage;
   };
 
@@ -305,6 +395,10 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
     setInput("");
     setIsMinimized(true);
     initialRequestSentRef.current = false;
+    // 사용자가 변경되면 루틴 캐시도 초기화
+    setUserRoutines([]);
+    setRoutinesLoaded(false);
+    setShowRoutineSelect(false);
   }, [userId]);
 
   // ESC 키 누르면 minimized로 전환
@@ -398,9 +492,11 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
           setIsLoading(false);
           const userMsg: ChatMessage = { type: 'user', content: message };
           
-          // AI 응답을 프론트엔드 메시지 형식으로 변환
-          const botMsg = convertBackendMessageToFrontend(aiRes);
-          console.log('[DEBUG]', initType === 'video' ? 'YouTube' : 'AI Coach', '응답 처리 완료:', botMsg);
+                     // AI 응답을 프론트엔드 메시지 형식으로 변환
+           console.log('[DEBUG] convertBackendMessageToFrontend 호출 전 aiRes:', aiRes);
+           const botMsg = convertBackendMessageToFrontend(aiRes);
+           console.log('[DEBUG] convertBackendMessageToFrontend 호출 후 botMsg:', botMsg);
+           console.log('[DEBUG]', initType === 'video' ? 'YouTube' : 'AI Coach', '응답 처리 완료:', botMsg);
           setMessages(prev => [...prev, userMsg, botMsg]); // 이전 대화내역에 추가
         }).catch((error) => {
           console.log('[DEBUG]', initType === 'video' ? 'YouTube' : 'AI Coach', 'API 호출 실패:', error);
@@ -451,9 +547,11 @@ const ChatModal = forwardRef<any, Props>(({ isOpen, onClose, initType, initPaylo
         ]);
         return;
       }
-      // AI 응답을 프론트엔드 메시지 형식으로 변환
-      const botMessage = convertBackendMessageToFrontend(aiRes);
-      console.log('setMessages에 들어가는 botMessage:', botMessage);
+             // AI 응답을 프론트엔드 메시지 형식으로 변환
+       console.log('[DEBUG] handleSend에서 convertBackendMessageToFrontend 호출 전 aiRes:', aiRes);
+       const botMessage = convertBackendMessageToFrontend(aiRes);
+       console.log('[DEBUG] handleSend에서 convertBackendMessageToFrontend 호출 후 botMessage:', botMessage);
+       console.log('setMessages에 들어가는 botMessage:', botMessage);
       setMessages(prev => [...prev, botMessage]);
     } catch (e) {
       setIsLoading(false);

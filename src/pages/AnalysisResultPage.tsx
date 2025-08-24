@@ -43,7 +43,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
   const [analysis, setAnalysis] = useState<AnalysisHistoryItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // const [isModalOpen, setIsModalOpen] = useState(false); // 모달 사용하지 않음
 
   // 사진 데이터 확인 (필요시 활용)
   // const { frontPhoto, sidePhoto } = (location.state as LocationState) || {};
@@ -80,7 +80,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
 
   // 챗봇 오픈 트리거 - 전역 Chatbot의 open 메서드 사용
   const handleChatOpen = (type: 'video' | 'consult', payload?: any) => {
-    setIsModalOpen(false);
+    // setIsModalOpen(false); // 모달 사용하지 않음
 
     // 분석 결과를 바탕으로 더 구체적인 메시지 생성
     if (analysis) {
@@ -128,10 +128,10 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
     }
   };
 
-  // 모달 닫기 핸들러
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-  };
+  // 모달 닫기 핸들러 - 현재 사용하지 않음
+  // const handleModalClose = () => {
+  //   setIsModalOpen(false);
+  // };
 
 
   // 공유 기능
@@ -337,14 +337,10 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
         {!isReadOnly && (
           <Button
             className="w-full !py-4 !text-base !font-bold bg-blue-600 hover:bg-blue-700 text-white"
-            // onClick={() => {
-            //   setIsModalOpen(true);
-            // }}
             onClick={() => {
-              handleChatOpen('video', {
-                videoUrl: 'https://www.youtube.com/watch?v=fFIL0rlRH78',
-                thumbnail: 'https://img.youtube.com/vi/fFIL0rlRH78/0.jpg',
-                message: '스크립트 요약과 댓글의 분석이 필요할 경우 요청주세요.'
+              // AI 코치와 바로 상담 시작
+              handleChatOpen('consult', {
+                message: '자세 분석 결과에 맞는 운동을 추천해주세요.'
               });
             }}
           >
@@ -352,9 +348,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
           </Button>
         )}
 
-
-
-        {/* 모달 */}
+        {/* 모달 - 현재 사용하지 않음 (바로 AI 코치 상담 시작)
         <Dialog open={isModalOpen} onOpenChange={handleModalClose}>
           <DialogContent className="max-w-md w-full">
             <DialogTitle>원하는 추천 방식을 선택하세요</DialogTitle>
@@ -366,7 +360,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
                 className="w-full py-3 text-lg bg-blue-500 hover:bg-blue-600 text-white"
                 onClick={() => {
                   handleChatOpen('consult', {
-                    message: 'OOO 운동을 추천드립니다. 루틴에 추가하시겠습니까?'
+                    message: '자세 분석 결과에 맞는 운동을 추천해주세요.'
                   });
                 }}
               >
@@ -387,6 +381,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ isReadOnly = fa
             </div>
           </DialogContent>
         </Dialog>
+        */}
       </div>
     );
   };
